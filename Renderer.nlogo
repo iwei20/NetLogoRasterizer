@@ -1,4 +1,4 @@
-turtles-own [distanceToCanvas data]
+turtles-own [distanceToCanvas data currentYaw currentPitch currentRoll cameraPosition]
 patches-own [z-buffer]
 
 to setup
@@ -17,6 +17,10 @@ to setup
                    (list -100 100 -250 150 150 -300 100 250 -800)
     )
     set distanceToCanvas 50
+    set currentYaw 0
+    set currentPitch 0
+    set currentRoll 0
+    set cameraPosition (list 0 0 0)
     ht
   ]
   cro 1 [
@@ -38,6 +42,12 @@ to render
   tick
 end
 
+to yawClockwise [degrees]
+  ask turtle 0 [ set currentYaw (currentYaw + degrees)]
+end
+
+
+
 ; Let P' be point on canvas
 ; Let P be point in real space
 ; (P'.y) = (distance between canvas and foci)(P.y)/(P.z)
@@ -50,9 +60,12 @@ to projectTriangle [distToCanvas dataList]
 end
 
 to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
-
+  let rx1 (x1 * (cos [currentYaw] of turtle 0) - z1 * (sin [currentYaw] of turtle 0))
+  let rz1 (x1 * (sin [currentYaw] of turtle 0) + z1 * (cos [currentYaw] of turtle 0))
+  let rx2 (x2 * (cos [currentYaw] of turtle 0) - z2 * (sin [currentYaw] of turtle 0))
+  let rz2 (x2 * (sin [currentYaw] of turtle 0) + z2 * (cos [currentYaw] of turtle 0))
   ; Check that both points are not offscreen
-  if not (z1 < distToCanvas and z2 < distToCanvas) [
+  if not (rz1 < distToCanvas and rz2 < distToCanvas) [
 
     ; Instantiate
     let x1' nobody
@@ -61,28 +74,28 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
     let y2' nobody
 
     ; One point offscreen check
-    ifelse z1 < distToCanvas [
+    ifelse rz1 < distToCanvas [
 
       ; Compute the intersection of the line with the plane z = distToCanvas
       ; No need to check case z1 = z2, as it is proven z1 < distToCanvas and z2 > distToCanvas
-      set x1' (x2 - x1)/(z2 - z1) * (distToCanvas - z1) + x1
-      set y1' (y2 - y1)/(z2 - z1) * (distToCanvas - z1) + y1
-      set x2' (distToCanvas * x2 / z2)
-      set y2' (distToCanvas * y2 / z2)
+      set x1' (rx2 - rx1)/(rz2 - rz1) * (distToCanvas - rz1) + rx1
+      set y1' (y2 - y1)/(rz2 - rz1) * (distToCanvas - rz1) + y1
+      set x2' (distToCanvas * rx2 / rz2)
+      set y2' (distToCanvas * y2 / rz2)
 
     ][
       ; See above
-      ifelse z2 < distToCanvas [
-        set x1' (distToCanvas * x1 / z1)
-        set y1' (distToCanvas * y1 / z1)
-        set x2' (x2 - x1)/(z2 - z1) * (distToCanvas - z2) + x2
-        set y2' (y2 - y1)/(z2 - z1) * (distToCanvas - z2) + y2
+      ifelse rz2 < distToCanvas [
+        set x1' (distToCanvas * rx1 / rz1)
+        set y1' (distToCanvas * y1 / rz1)
+        set x2' (rx2 - rx1)/(rz2 - rz1) * (distToCanvas - rz2) + rx2
+        set y2' (y2 - y1)/(rz2 - rz1) * (distToCanvas - rz2) + y2
       ][
         ; Both z are onscreen
-        set x1' (distToCanvas * x1 / z1)
-        set y1' (distToCanvas * y1 / z1)
-        set x2' (distToCanvas * x2 / z2)
-        set y2' (distToCanvas * y2 / z2)
+        set x1' (distToCanvas * rx1 / rz1)
+        set y1' (distToCanvas * y1 / rz1)
+        set x2' (distToCanvas * rx2 / rz2)
+        set y2' (distToCanvas * y2 / rz2)
       ]
     ]
 
@@ -97,27 +110,21 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
   ]
 end
 
-; Brasenham
-to brasenhamBase []
-end
-
 ; rotation of any point (x,z) through any angle θ is given by (xcosθ-zsinθ,xcosθ+zsinθ)
-to rotateYaw [degrees]
-  (foreach ([data] of turtle 0) (range 0 (length ([data] of turtle 0))) [[dataList index] -> rotateYawBase degrees dataList index])
-end
+;to rotateYaw [degrees]
+;  (foreach ([data] of turtle 0) (range 0 (length ([data] of turtle 0))) [[dataList index] -> rotateYawBase degrees dataList index])
+;end
 
-to rotateYawBase [degrees dataList index]
-  let newDataList dataList
-  set newDataList replace-item 0 newDataList (item 0 newDataList * cos degrees - item 2 newDataList * sin degrees)
-  set newDataList replace-item 2 newDataList (item 0 newDataList * sin degrees + item 2 newDataList * cos degrees)
-  set newDataList replace-item 3 newDataList (item 3 newDataList * cos degrees - item 5 newDataList * sin degrees)
-  set newDataList replace-item 5 newDataList (item 3 newDataList * sin degrees + item 5 newDataList * cos degrees)
-  set newDataList replace-item 6 newDataList (item 6 newDataList * cos degrees - item 8 newDataList * sin degrees)
-  set newDataList replace-item 8 newDataList (item 6 newDataList * sin degrees + item 8 newDataList * cos degrees)
-  ask turtle 0 [
-    set data replace-item index data newDataList
-  ]
-end
+;;to-report rotateYawBase [degrees dataList]
+;  ;let newDataList dataList
+; ; set newDataList replace-item 0 newDataList (item 0 newDataList * cos degrees - item 2 newDataList * sin degrees)
+; ;; set newDataList replace-item 2 newDataList (item 0 newDataList * sin degrees + item 2 newDataList * cos degrees)
+;  set newDataList replace-item 3 newDataList (item 3 newDataList * cos degrees - item 5 newDataList * sin degrees)
+;;  set newDataList replace-item 5 newDataList (item 3 newDataList * sin degrees + item 5 newDataList * cos degrees)
+;  set newDataList replace-item 6 newDataList (item 6 newDataList * cos degrees - item 8 newDataList * sin degrees)
+;  set newDataList replace-item 8 newDataList (item 6 newDataList * sin degrees + item 8 newDataList * cos degrees)
+;  report newDataList
+;end
 @#$#@#$#@
 GRAPHICS-WINDOW
 394
@@ -183,10 +190,10 @@ NIL
 BUTTON
 30
 257
-106
+171
 290
 NIL
-rotateYaw 2
+yawClockwise 2
 NIL
 1
 T
@@ -200,10 +207,10 @@ NIL
 BUTTON
 190
 259
-265
+336
 292
 NIL
-rotateYaw -2
+yawClockwise -2
 NIL
 1
 T

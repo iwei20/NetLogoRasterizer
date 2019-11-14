@@ -1,4 +1,4 @@
-turtles-own [distanceToCanvas data currentYaw currentPitch currentRoll cameraPosition]
+turtles-own [distanceToCanvas data currentYaw currentPitch currentRoll cameraX cameraY cameraZ]
 patches-own [z-buffer]
 
 to setup
@@ -15,15 +15,20 @@ to setup
                    (list -100 100 -250 50 350 -400 100 250 -800)
                    (list 50 350 -400 50 350 -400 100 250 -800)
                    (list -100 100 -250 150 150 -300 100 250 -800)
+                   (list -1000 -321 1000 1000 -321 1000 -1000 -321 -1000)
+                   (list -1000 -321 -1000 1000 -321 1000 1000 -321 -1000)
     )
     set distanceToCanvas 50
     set currentYaw 0
     set currentPitch 0
     set currentRoll 0
-    set cameraPosition (list 0 0 0)
+    set cameraX 0
+    set cameraY 0
+    set cameraZ 0
     ht
   ]
   cro 1 [
+    set color white
     set size 10
     set shape "x"
   ]
@@ -35,18 +40,43 @@ end
 ; Runs periodically
 to render
   cd
+  setYaw sliderYaw
+  setPitch sliderPitch
   foreach [data] of turtle 0 [dataList -> projectTriangle ([distanceToCanvas] of turtle 0) dataList]
-  ask patches with [pxcor > 200 or pxcor < -200] [
-    set pcolor white
-  ]
   tick
 end
 
-to yawClockwise [degrees]
-  ask turtle 0 [ set currentYaw (currentYaw + degrees)]
+to setYaw [degrees]
+  ask turtle 0 [ set currentYaw degrees ]
 end
 
+to setPitch [degrees]
+  ask turtle 0 [ set currentPitch degrees ]
+end
 
+to yawClockwise [degrees]
+  ask turtle 0 [ set currentYaw (currentYaw + degrees) ]
+end
+
+to rollClockwise [degrees]
+  ask turtle 0 [ set currentRoll (currentRoll + degrees) ]
+end
+
+to pitchClockwise [degrees]
+  ask turtle 0 [ set currentPitch (currentPitch + degrees) ]
+end
+
+to transformRight [distToTransform]
+  ask turtle 0 [ set cameraX (cameraX + distToTransform) ]
+end
+
+to transformUp [distToTransform]
+  ask turtle 0 [ set cameraY (cameraY + distToTransform) ]
+end
+
+to transformForward [distToTransform]
+  ask turtle 0 [ set cameraZ (cameraZ + distToTransform) ]
+end
 
 ; Let P' be point on canvas
 ; Let P be point in real space
@@ -60,10 +90,14 @@ to projectTriangle [distToCanvas dataList]
 end
 
 to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
-  let rx1 (x1 * (cos [currentYaw] of turtle 0) - z1 * (sin [currentYaw] of turtle 0))
-  let rz1 (x1 * (sin [currentYaw] of turtle 0) + z1 * (cos [currentYaw] of turtle 0))
-  let rx2 (x2 * (cos [currentYaw] of turtle 0) - z2 * (sin [currentYaw] of turtle 0))
-  let rz2 (x2 * (sin [currentYaw] of turtle 0) + z2 * (cos [currentYaw] of turtle 0))
+  let r1 getMovedPoint x1 y1 z1
+  let r2 getMovedPoint x2 y2 z2
+  let rx1 (item 0 r1)
+  let ry1 (item 1 r1)
+  let rz1 (item 2 r1)
+  let rx2 (item 0 r2)
+  let ry2 (item 1 r2)
+  let rz2 (item 2 r2)
   ; Check that both points are not offscreen
   if not (rz1 < distToCanvas and rz2 < distToCanvas) [
 
@@ -79,23 +113,23 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
       ; Compute the intersection of the line with the plane z = distToCanvas
       ; No need to check case z1 = z2, as it is proven z1 < distToCanvas and z2 > distToCanvas
       set x1' (rx2 - rx1)/(rz2 - rz1) * (distToCanvas - rz1) + rx1
-      set y1' (y2 - y1)/(rz2 - rz1) * (distToCanvas - rz1) + y1
+      set y1' (ry2 - ry1)/(rz2 - rz1) * (distToCanvas - rz1) + ry1
       set x2' (distToCanvas * rx2 / rz2)
-      set y2' (distToCanvas * y2 / rz2)
+      set y2' (distToCanvas * ry2 / rz2)
 
     ][
       ; See above
       ifelse rz2 < distToCanvas [
         set x1' (distToCanvas * rx1 / rz1)
-        set y1' (distToCanvas * y1 / rz1)
+        set y1' (distToCanvas * ry1 / rz1)
         set x2' (rx2 - rx1)/(rz2 - rz1) * (distToCanvas - rz2) + rx2
-        set y2' (y2 - y1)/(rz2 - rz1) * (distToCanvas - rz2) + y2
+        set y2' (ry2 - y1)/(rz2 - rz1) * (distToCanvas - rz2) + ry2
       ][
         ; Both z are onscreen
         set x1' (distToCanvas * rx1 / rz1)
-        set y1' (distToCanvas * y1 / rz1)
+        set y1' (distToCanvas * ry1 / rz1)
         set x2' (distToCanvas * rx2 / rz2)
-        set y2' (distToCanvas * y2 / rz2)
+        set y2' (distToCanvas * ry2 / rz2)
       ]
     ]
 
@@ -103,28 +137,37 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
       set color white
       setxy (max list (min list x1' max-pxcor) min-pxcor) (max list (min list y1' max-pycor) min-pycor)
       pd
-      setxy (max list (min list x2' max-pxcor) min-pxcor) (max list (min list y2' max-pycor) min-pycor)
+      face patch (max list (min list x2' max-pxcor) min-pxcor) (max list (min list y2' max-pycor) min-pycor)
+      fd distancexy (max list (min list x2' max-pxcor) min-pxcor) (max list (min list y2' max-pycor) min-pycor)
       die
     ]
 
   ]
 end
 
-; rotation of any point (x,z) through any angle θ is given by (xcosθ-zsinθ,xcosθ+zsinθ)
-;to rotateYaw [degrees]
-;  (foreach ([data] of turtle 0) (range 0 (length ([data] of turtle 0))) [[dataList index] -> rotateYawBase degrees dataList index])
-;end
+to-report getRotatePoint [x y z]
+  let returnList (list x y z)
+  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentYaw] of turtle 0) - (item 2 returnList) * (sin [currentYaw] of turtle 0))
+  set returnList replace-item 2 returnList ((item 0 returnList) * (sin [currentYaw] of turtle 0) + (item 2 returnList) * (cos [currentYaw] of turtle 0))
+  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentRoll] of turtle 0) - (item 1 returnList) * (sin [currentRoll] of turtle 0))
+  set returnList replace-item 1 returnList ((item 0 returnList) * (sin [currentRoll] of turtle 0) + (item 1 returnList) * (cos [currentRoll] of turtle 0))
+  set returnList replace-item 1 returnList ((item 1 returnList) * (cos [currentPitch] of turtle 0) - (item 2 returnList) * (sin [currentPitch] of turtle 0))
+  set returnList replace-item 2 returnList ((item 1 returnList) * (sin [currentPitch] of turtle 0) + (item 2 returnList) * (cos [currentPitch] of turtle 0))
+  report returnList
+end
 
-;;to-report rotateYawBase [degrees dataList]
-;  ;let newDataList dataList
-; ; set newDataList replace-item 0 newDataList (item 0 newDataList * cos degrees - item 2 newDataList * sin degrees)
-; ;; set newDataList replace-item 2 newDataList (item 0 newDataList * sin degrees + item 2 newDataList * cos degrees)
-;  set newDataList replace-item 3 newDataList (item 3 newDataList * cos degrees - item 5 newDataList * sin degrees)
-;;  set newDataList replace-item 5 newDataList (item 3 newDataList * sin degrees + item 5 newDataList * cos degrees)
-;  set newDataList replace-item 6 newDataList (item 6 newDataList * cos degrees - item 8 newDataList * sin degrees)
-;  set newDataList replace-item 8 newDataList (item 6 newDataList * sin degrees + item 8 newDataList * cos degrees)
-;  report newDataList
-;end
+to-report getTransformPoint [x y z]
+  let returnList (list x y z)
+  set returnList replace-item 0 returnList ((item 0 returnList) + ([cameraX] of turtle 0))
+  set returnList replace-item 1 returnList ((item 1 returnList) + ([cameraY] of turtle 0))
+  set returnList replace-item 2 returnList ((item 2 returnList) + ([cameraZ] of turtle 0))
+  report returnList
+end
+
+to-report getMovedPoint [x y z]
+  let transform getTransformPoint x y z
+  report getRotatePoint (item 0 transform) (item 1 transform) (item 2 transform)
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 394
@@ -187,36 +230,100 @@ NIL
 NIL
 1
 
-BUTTON
-30
-257
-171
-290
+SLIDER
+31
+159
+203
+192
+sliderYaw
+sliderYaw
+-180
+180
+10.3
+0.1
+1
 NIL
-yawClockwise 2
+HORIZONTAL
+
+SLIDER
+225
+91
+258
+241
+sliderPitch
+sliderPitch
+-90
+90
+0.7
+0.1
+1
+NIL
+VERTICAL
+
+BUTTON
+117
+255
+196
+288
+forward
+transformForward -50
 NIL
 1
 T
 OBSERVER
 NIL
-A
+W
 NIL
 NIL
 1
 
 BUTTON
-190
-259
-336
-292
+117
+287
+196
+320
+back
+transformForward 50
 NIL
-yawClockwise -2
+1
+T
+OBSERVER
+NIL
+S
+NIL
+NIL
+1
+
+BUTTON
+195
+287
+260
+320
+right
+transformRight -50
 NIL
 1
 T
 OBSERVER
 NIL
 D
+NIL
+NIL
+1
+
+BUTTON
+55
+287
+118
+320
+left
+transformRight 50
+NIL
+1
+T
+OBSERVER
+NIL
+A
 NIL
 NIL
 1
@@ -563,7 +670,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.1
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

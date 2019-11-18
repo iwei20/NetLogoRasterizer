@@ -18,7 +18,7 @@ to setup
                    (list -1000 -321 1000 1000 -321 1000 -1000 -321 -1000)
                    (list -1000 -321 -1000 1000 -321 1000 1000 -321 -1000)
     )
-    set distanceToCanvas 50
+    set distanceToCanvas 200
     set currentYaw 0
     set currentPitch 0
     set currentRoll 0
@@ -123,15 +123,64 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
         set x1' (distToCanvas * rx1 / rz1)
         set y1' (distToCanvas * ry1 / rz1)
         set x2' (rx2 - rx1)/(rz2 - rz1) * (distToCanvas - rz2) + rx2
-        set y2' (ry2 - y1)/(rz2 - rz1) * (distToCanvas - rz2) + ry2
+        set y2' (ry2 - ry1)/(rz2 - rz1) * (distToCanvas - rz2) + ry2
       ][
         ; Both z are onscreen
-        set x1' (distToCanvas * rx1 / rz1)
-        set y1' (distToCanvas * ry1 / rz1)
-        set x2' (distToCanvas * rx2 / rz2)
-        set y2' (distToCanvas * ry2 / rz2)
+        set x1' (distToCanvas * rx1 / rz1);
+        set y1' (distToCanvas * ry1 / rz1);
+        set x2' (distToCanvas * rx2 / rz2);
+        set y2' (distToCanvas * ry2 / rz2);
       ]
     ]
+
+    ; Calculate intersection with edge of screen - very similar to calculating intersection with plane
+    if not (x1' > max-pxcor and x2' > max-pxcor) [
+      ifelse x1' > max-pxcor [
+        set y1' (y1' - y2')/(x1' - x2') * (max-pxcor - x2') + y2';
+        set x1' max-pxcor;
+      ][
+        if x2' > max-pxcor [
+          set y2' (y1' - y2')/(x1' - x2') * (max-pxcor - x2') + y2';
+          set x2' max-pxcor;
+        ]
+      ]
+    ]
+
+    if not (x1' < min-pxcor and x2' < min-pxcor) [
+      ifelse x1' < min-pxcor [
+        set y1' (y1' - y2')/(x1' - x2') * (min-pxcor - x2') + y2';
+        set x1' min-pxcor;
+      ][
+        if x2' < min-pxcor [
+          set y2' (y1' - y2')/(x1' - x2') * (min-pxcor - x2') + y2';
+          set x2' min-pxcor;
+        ]
+      ]
+    ]
+
+;    if not (y1' > max-pycor and y2' > max-pycor) [
+;      ifelse y1' > max-pycor [
+;        set x1' (max-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
+;        set y1' max-pycor;
+;      ][
+;        if x2' > max-pycor [
+;          set x2' (max-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
+;          set y2' max-pycor;
+;        ]
+;      ]
+;    ]
+;
+;    if not (y1' < min-pycor and y2' < min-pycor) [
+;      ifelse y1' < min-pycor [
+;        set x1' (min-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
+;        set y1' min-pycor;
+;      ][
+;        if x2' < min-pycor [
+;          set x2' (min-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
+;          set y2' min-pycor;
+;        ]
+;      ]
+;    ]
 
     cro 1 [
       set color white
@@ -145,14 +194,16 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
   ]
 end
 
+; Relative is right, up
 to-report getRotatePoint [x y z]
-  let returnList (list x y z)
-  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentYaw] of turtle 0) - (item 2 returnList) * (sin [currentYaw] of turtle 0))
-  set returnList replace-item 2 returnList ((item 0 returnList) * (sin [currentYaw] of turtle 0) + (item 2 returnList) * (cos [currentYaw] of turtle 0))
-  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentRoll] of turtle 0) - (item 1 returnList) * (sin [currentRoll] of turtle 0))
-  set returnList replace-item 1 returnList ((item 0 returnList) * (sin [currentRoll] of turtle 0) + (item 1 returnList) * (cos [currentRoll] of turtle 0))
-  set returnList replace-item 1 returnList ((item 1 returnList) * (cos [currentPitch] of turtle 0) - (item 2 returnList) * (sin [currentPitch] of turtle 0))
-  set returnList replace-item 2 returnList ((item 1 returnList) * (sin [currentPitch] of turtle 0) + (item 2 returnList) * (cos [currentPitch] of turtle 0))
+  let returnList (list (x + [cameraX] of turtle 0) (y + [cameraY] of turtle 0) (z + [cameraZ] of turtle 0))
+  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentYaw] of turtle 0) - (item 2 returnList) * (sin [currentYaw] of turtle 0));
+  set returnList replace-item 2 returnList ((item 0 returnList) * (sin [currentYaw] of turtle 0) + (item 2 returnList) * (cos [currentYaw] of turtle 0));
+  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentRoll] of turtle 0) - (item 1 returnList) * (sin [currentRoll] of turtle 0));
+  set returnList replace-item 1 returnList ((item 0 returnList) * (sin [currentRoll] of turtle 0) + (item 1 returnList) * (cos [currentRoll] of turtle 0));
+  set returnList replace-item 1 returnList ((item 1 returnList) * (cos [currentPitch] of turtle 0) - (item 2 returnList) * (sin [currentPitch] of turtle 0));
+  set returnList replace-item 2 returnList ((item 1 returnList) * (sin [currentPitch] of turtle 0) + (item 2 returnList) * (cos [currentPitch] of turtle 0));
+  set returnList (list (item 0 returnList - [cameraX] of turtle 0) (item 1 returnList - [cameraY] of turtle 0) (item 2 returnList - [cameraZ] of turtle 0));
   report returnList
 end
 
@@ -165,8 +216,8 @@ to-report getTransformPoint [x y z]
 end
 
 to-report getMovedPoint [x y z]
-  let transform getTransformPoint x y z
-  report getRotatePoint (item 0 transform) (item 1 transform) (item 2 transform)
+  let transform getRotatePoint x y z
+  report getTransformPoint (item 0 transform) (item 1 transform) (item 2 transform)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -183,8 +234,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -320
 320
@@ -239,7 +290,7 @@ sliderYaw
 sliderYaw
 -180
 180
-10.3
+166.2
 0.1
 1
 NIL
@@ -254,7 +305,7 @@ sliderPitch
 sliderPitch
 -90
 90
-0.7
+3.3
 0.1
 1
 NIL

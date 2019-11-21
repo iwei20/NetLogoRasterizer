@@ -7,18 +7,18 @@ to setup
   reset-timer
   ; Use a turtle to store the data - don't touch turtle 0!
   crt 1 [
-    set data (list (list -100 100 250 150 150 300 50 350 400)
-                   (list -100 100 250 50 350 400 100 250 800)
-                   (list 50 350 400 50 350 400 100 250 800)
-                   (list -100 100 250 150 150 300 100 250 800)
-                   (list -100 100 -250 150 150 -300 50 350 -400)
-                   (list -100 100 -250 50 350 -400 100 250 -800)
-                   (list 50 350 -400 50 350 -400 100 250 -800)
-                   (list -100 100 -250 150 150 -300 100 250 -800)
-                   (list -1000 -321 1000 1000 -321 1000 -1000 -321 -1000)
-                   (list -1000 -321 -1000 1000 -321 1000 1000 -321 -1000)
+    set data (list (list -100 100 250 150 150 300 50 350 400 white)
+                   (list -100 100 250 50 350 400 100 250 800 white)
+                   (list 50 350 400 50 350 400 100 250 800 white)
+                   (list -100 100 250 150 150 300 100 250 800 white)
+                   (list -100 100 -250 150 150 -300 50 350 -400 white)
+                   (list -100 100 -250 50 350 -400 100 250 -800 white)
+                   (list 50 350 -400 50 350 -400 100 250 -800 white)
+                   (list -100 100 -250 150 150 -300 100 250 -800 white)
+                   (list -1000 -321 1000 1000 -321 1000 -1000 -321 -1000 white)
+                   (list -1000 -321 -1000 1000 -321 1000 1000 -321 -1000 white)
     )
-    set distanceToCanvas 200
+    set distanceToCanvas 100
     set currentYaw 0
     set currentPitch 0
     set currentRoll 0
@@ -27,11 +27,15 @@ to setup
     set cameraZ 0
     ht
   ]
+
+  ; Used to mark the middle
   cro 1 [
     set color white
     set size 10
     set shape "x"
   ]
+
+  ; TODO: Work on depth buffer algorithm
   ask patches [
     set z-buffer nobody
   ]
@@ -46,6 +50,7 @@ to render
   tick
 end
 
+; Rotations
 to setYaw [degrees]
   ask turtle 0 [ set currentYaw degrees ]
 end
@@ -66,6 +71,7 @@ to pitchClockwise [degrees]
   ask turtle 0 [ set currentPitch (currentPitch + degrees) ]
 end
 
+; Transformations
 to transformRight [distToTransform]
   ask turtle 0 [ set cameraX (cameraX + distToTransform) ]
 end
@@ -78,18 +84,19 @@ to transformForward [distToTransform]
   ask turtle 0 [ set cameraZ (cameraZ + distToTransform) ]
 end
 
+; data is formatted [x1 y1 z1 x2 y2 z2 x3 y3 z3]
+to projectTriangle [distToCanvas dataList]
+  drawLine (item 0 dataList) (item 1 dataList) (item 2 dataList) (item 3 dataList) (item 4 dataList) (item 5 dataList) distToCanvas (item 9 dataList)
+  drawLine (item 3 dataList) (item 4 dataList) (item 5 dataList) (item 6 dataList) (item 7 dataList) (item 8 dataList) distToCanvas (item 9 dataList)
+  drawLine (item 6 dataList) (item 7 dataList) (item 8 dataList) (item 0 dataList) (item 1 dataList) (item 2 dataList) distToCanvas (item 9 dataList)
+end
+
 ; Let P' be point on canvas
 ; Let P be point in real space
 ; (P'.y) = (distance between canvas and foci)(P.y)/(P.z)
 ; (P'.x) = (distance between canvas and foci)(P.x)/(P.z)
-; data is formatted [x1 y1 z1 x2 y2 z2 x3 y3 z3]
-to projectTriangle [distToCanvas dataList]
-  drawLine (item 0 dataList) (item 1 dataList) (item 2 dataList) (item 3 dataList) (item 4 dataList) (item 5 dataList) distToCanvas
-  drawLine (item 3 dataList) (item 4 dataList) (item 5 dataList) (item 6 dataList) (item 7 dataList) (item 8 dataList) distToCanvas
-  drawLine (item 6 dataList) (item 7 dataList) (item 8 dataList) (item 0 dataList) (item 1 dataList) (item 2 dataList) distToCanvas
-end
+to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas outlineColor]
 
-to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
   let r1 getMovedPoint x1 y1 z1
   let r2 getMovedPoint x2 y2 z2
   let rx1 (item 0 r1)
@@ -98,6 +105,7 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
   let rx2 (item 0 r2)
   let ry2 (item 1 r2)
   let rz2 (item 2 r2)
+
   ; Check that both points are not offscreen
   if not (rz1 < distToCanvas and rz2 < distToCanvas) [
 
@@ -158,32 +166,32 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas]
       ]
     ]
 
-;    if not (y1' > max-pycor and y2' > max-pycor) [
-;      ifelse y1' > max-pycor [
-;        set x1' (max-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
-;        set y1' max-pycor;
-;      ][
-;        if x2' > max-pycor [
-;          set x2' (max-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
-;          set y2' max-pycor;
-;        ]
-;      ]
-;    ]
-;
-;    if not (y1' < min-pycor and y2' < min-pycor) [
-;      ifelse y1' < min-pycor [
-;        set x1' (min-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
-;        set y1' min-pycor;
-;      ][
-;        if x2' < min-pycor [
-;          set x2' (min-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
-;          set y2' min-pycor;
-;        ]
-;      ]
-;    ]
+    if not (y1' > max-pycor and y2' > max-pycor) [
+      ifelse y1' > max-pycor [
+        set x1' (max-pycor - y2') * (x1' - x2') / (y1' - y2') + x2';
+        set y1' max-pycor;
+      ][
+        if y2' > max-pycor [
+          set x2' (max-pycor - y2') * (x1' - x2') / (y1' - y2') + x2';
+          set y2' max-pycor;
+        ]
+      ]
+    ]
+
+    if not (y1' < min-pycor and y2' < min-pycor) [
+      ifelse y1' < min-pycor [
+        set x1' (min-pycor - y2') * (x1' - x2') / (y1' - y2') + x2';
+        set y1' min-pycor;
+      ][
+        if y2' < min-pycor [
+          set x2' (min-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
+          set y2' min-pycor;
+        ]
+      ]
+    ]
 
     cro 1 [
-      set color white
+      set color outlineColor
       setxy (max list (min list x1' max-pxcor) min-pxcor) (max list (min list y1' max-pycor) min-pycor)
       pd
       face patch (max list (min list x2' max-pxcor) min-pxcor) (max list (min list y2' max-pycor) min-pycor)
@@ -196,18 +204,24 @@ end
 
 ; Relative is right, up
 to-report getRotatePoint [x y z]
-  let returnList (list (x + [cameraX] of turtle 0) (y + [cameraY] of turtle 0) (z + [cameraZ] of turtle 0))
-  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentYaw] of turtle 0) - (item 2 returnList) * (sin [currentYaw] of turtle 0));
-  set returnList replace-item 2 returnList ((item 0 returnList) * (sin [currentYaw] of turtle 0) + (item 2 returnList) * (cos [currentYaw] of turtle 0));
+  let returnList (list x y z);
+
+  ; Rotation about z-axis
   set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentRoll] of turtle 0) - (item 1 returnList) * (sin [currentRoll] of turtle 0));
   set returnList replace-item 1 returnList ((item 0 returnList) * (sin [currentRoll] of turtle 0) + (item 1 returnList) * (cos [currentRoll] of turtle 0));
+
+  ; Rotation about x-axis
   set returnList replace-item 1 returnList ((item 1 returnList) * (cos [currentPitch] of turtle 0) - (item 2 returnList) * (sin [currentPitch] of turtle 0));
   set returnList replace-item 2 returnList ((item 1 returnList) * (sin [currentPitch] of turtle 0) + (item 2 returnList) * (cos [currentPitch] of turtle 0));
-  set returnList (list (item 0 returnList - [cameraX] of turtle 0) (item 1 returnList - [cameraY] of turtle 0) (item 2 returnList - [cameraZ] of turtle 0));
+
+  ; Rotation about y-axis
+  set returnList replace-item 0 returnList ((item 0 returnList) * (cos [currentYaw] of turtle 0) - (item 2 returnList) * (sin [currentYaw] of turtle 0));
+  set returnList replace-item 2 returnList ((item 0 returnList) * (sin [currentYaw] of turtle 0) + (item 2 returnList) * (cos [currentYaw] of turtle 0));
+
   report returnList
 end
 
-to-report getTransformPoint [x y z]
+to-report getTranslatePoint [x y z]
   let returnList (list x y z)
   set returnList replace-item 0 returnList ((item 0 returnList) + ([cameraX] of turtle 0))
   set returnList replace-item 1 returnList ((item 1 returnList) + ([cameraY] of turtle 0))
@@ -216,15 +230,15 @@ to-report getTransformPoint [x y z]
 end
 
 to-report getMovedPoint [x y z]
-  let transform getRotatePoint x y z
-  report getTransformPoint (item 0 transform) (item 1 transform) (item 2 transform)
+  let translate getTranslatePoint x y z
+  report getRotatePoint (item 0 translate) (item 1 translate) (item 2 translate)
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-394
-25
-1043
-395
+675
+27
+1324
+397
 -1
 -1
 1.0
@@ -290,7 +304,7 @@ sliderYaw
 sliderYaw
 -180
 180
-166.2
+-90.0
 0.1
 1
 NIL
@@ -305,7 +319,7 @@ sliderPitch
 sliderPitch
 -90
 90
-3.3
+-2.0
 0.1
 1
 NIL
@@ -317,7 +331,7 @@ BUTTON
 196
 288
 forward
-transformForward -50
+transformForward -5
 NIL
 1
 T
@@ -334,7 +348,7 @@ BUTTON
 196
 320
 back
-transformForward 50
+transformForward 5
 NIL
 1
 T
@@ -351,7 +365,7 @@ BUTTON
 260
 320
 right
-transformRight -50
+transformRight -5
 NIL
 1
 T
@@ -368,7 +382,7 @@ BUTTON
 118
 320
 left
-transformRight 50
+transformRight 5
 NIL
 1
 T
@@ -378,6 +392,39 @@ A
 NIL
 NIL
 1
+
+MONITOR
+44
+340
+193
+385
+NIL
+[cameraX] of turtle 0
+17
+1
+11
+
+MONITOR
+216
+340
+365
+385
+NIL
+[cameraY] of turtle 0
+17
+1
+11
+
+MONITOR
+387
+346
+538
+391
+NIL
+[cameraZ] of turtle 0
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?

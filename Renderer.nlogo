@@ -1,4 +1,4 @@
-turtles-own [distanceToCanvas data currentYaw currentPitch currentRoll cameraX cameraY cameraZ]
+turtles-own [distanceToCanvas data currentYaw currentPitch currentRoll cameraX cameraY cameraZ sensitivity last-mxcor last-mycor];
 patches-own [z-buffer]
 
 to setup
@@ -18,9 +18,10 @@ to setup
                    (list -1000 -321 1000 1000 -321 1000 -1000 -321 -1000 white)
                    (list -1000 -321 -1000 1000 -321 1000 1000 -321 -1000 white)
     )
-    set distanceToCanvas 100;
-    set sliderYaw 1;
-    set sliderPitch 1;
+    set distanceToCanvas 300;
+    set sliderYaw 0;
+    set sliderPitch 0;
+    set sensitivity 1;
     ht
   ]
 
@@ -46,6 +47,14 @@ to render
     dataList -> projectTriangle ([distanceToCanvas] of turtle 0) dataList;
   ]
   tick;
+end
+
+to rotateByMouse
+  if mouse-down? [
+
+  ]
+  set last-mxcor mouse-xcor;
+  set last-mycor mouse-ycor;
 end
 
 ; Rotations
@@ -160,13 +169,15 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas outlineColor]
     ]
 
     ; Calculate intersection with edge of screen - very similar to calculating intersection with plane
+    let point-slope-x 10000
+    if not (x1' = x2') [ set point-slope-x ((y1' - y2') / (x1' - x2')) ]
     if not (x1' > max-pxcor and x2' > max-pxcor) [
       ifelse x1' > max-pxcor [
-        set y1' (y1' - y2')/(x1' - x2') * (max-pxcor - x2') + y2';
+        set y1' point-slope-x * (max-pxcor - x2') + y2';
         set x1' max-pxcor;
       ][
         if x2' > max-pxcor [
-          set y2' (y1' - y2')/(x1' - x2') * (max-pxcor - x2') + y2';
+          set y2' point-slope-x * (max-pxcor - x2') + y2';
           set x2' max-pxcor;
         ]
       ]
@@ -174,24 +185,25 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas outlineColor]
 
     if not (x1' < min-pxcor and x2' < min-pxcor) [
       ifelse x1' < min-pxcor [
-        set y1' (y1' - y2')/(x1' - x2') * (min-pxcor - x2') + y2';
+        set y1' point-slope-x * (min-pxcor - x2') + y2';
         set x1' min-pxcor;
       ][
         if x2' < min-pxcor [
-          set y2' (y1' - y2')/(x1' - x2') * (min-pxcor - x2') + y2';
+          set y2' point-slope-x * (min-pxcor - x2') + y2';
           set x2' min-pxcor;
         ]
       ]
     ]
 
-    ; TODO: y checks, unfortunately require a case for prevention of division by zero
+    let point-slope-y 10000
+    if not (y1' = y2') [ set point-slope-y ((x1' - x2') / (y1' - y2')) ]
     if not (y1' > max-pycor and y2' > max-pycor) [
       ifelse y1' > max-pycor [
-        set x1' (max-pycor - y2') * (x1' - x2') / (y1' - y2') + x2';
+        set x1' (max-pycor - y2') * point-slope-y + x2';
         set y1' max-pycor;
       ][
         if y2' > max-pycor [
-          set x2' (max-pycor - y2') * (x1' - x2') / (y1' - y2') + x2';
+          set x2' (max-pycor - y2') * point-slope-y + x2';
           set y2' max-pycor;
         ]
       ]
@@ -199,11 +211,11 @@ to drawLine [x1 y1 z1 x2 y2 z2 distToCanvas outlineColor]
 
     if not (y1' < min-pycor and y2' < min-pycor) [
       ifelse y1' < min-pycor [
-        set x1' (min-pycor - y2') * (x1' - x2') / (y1' - y2') + x2';
+        set x1' (min-pycor - y2') * point-slope-y + x2';
         set y1' min-pycor;
       ][
         if y2' < min-pycor [
-          set x2' (min-pycor - y2') / ((y1' - y2')/(x1' - x2')) + x2';
+          set x2' (min-pycor - y2') * point-slope-y + x2';
           set y2' min-pycor;
         ]
       ]
@@ -364,9 +376,9 @@ NIL
 1
 
 BUTTON
-195
+196
 287
-260
+261
 320
 east
 moveCameraEast 50
@@ -381,9 +393,9 @@ NIL
 1
 
 BUTTON
-55
+53
 287
-120
+118
 320
 west
 moveCameraEast -50

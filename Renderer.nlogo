@@ -19,10 +19,8 @@ to setup
                    (list -1000 -321 -1000 1000 -321 1000 1000 -321 -1000 white)
     )
     set distanceToCanvas 300;
-    set sliderYaw 0;
-    set sliderPitch 0;
-    set sensitivity 1;
-    ht
+    set sensitivity 0.25;
+    ht;
   ]
 
   ; Used to mark the middle
@@ -41,8 +39,7 @@ end
 ; Main function
 to render
   cd;
-  setYaw sliderYaw;
-  setPitch sliderPitch;
+  rotateByMouse;
   foreach [data] of turtle 0 [
     dataList -> projectTriangle ([distanceToCanvas] of turtle 0) dataList;
   ]
@@ -51,10 +48,23 @@ end
 
 to rotateByMouse
   if mouse-down? [
+    yawClockwise -1 * (mouse-xcor - [last-mxcor] of turtle 0) * [sensitivity] of turtle 0;
+    pitchClockwise (mouse-ycor - [last-mycor] of turtle 0) * [sensitivity] of turtle 0;
+
+    ask turtle 0 [
+      if currentPitch > 90 [
+        set currentPitch 89.999;
+      ]
+      if currentPitch < -90 [
+        set currentPitch -89.999;
+      ]
+    ]
 
   ]
-  set last-mxcor mouse-xcor;
-  set last-mycor mouse-ycor;
+  ask turtle 0 [
+    set last-mxcor mouse-xcor;
+    set last-mycor mouse-ycor;
+  ]
 end
 
 ; Rotations
@@ -88,6 +98,13 @@ end
 to pitchClockwise [degrees]
   ask turtle 0 [
     set currentPitch (currentPitch + degrees);
+  ]
+end
+
+to moveCameraForward [distToTransform]
+  ask turtle 0 [
+    set cameraX (cameraX + sin currentYaw * distToTransform);
+    set cameraZ (cameraZ + cos currentYaw * distToTransform);
   ]
 end
 
@@ -311,43 +328,13 @@ NIL
 NIL
 1
 
-SLIDER
-31
-159
-203
-192
-sliderYaw
-sliderYaw
--180
-180
-0.0
-0.1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-225
-91
-258
-241
-sliderPitch
-sliderPitch
--90
-90
-0.0
-0.1
-1
-NIL
-VERTICAL
-
 BUTTON
 117
 255
 196
 288
 north
-moveCameraNorth 50
+moveCameraForward 50
 NIL
 1
 T
@@ -364,7 +351,7 @@ BUTTON
 196
 320
 south
-moveCameraNorth -50
+moveCameraForward -50
 NIL
 1
 T

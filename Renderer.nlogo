@@ -108,6 +108,13 @@ to moveCameraForward [distToTransform]
   ]
 end
 
+to moveCameraRight [distToTransform]
+  ask turtle 0 [
+    set cameraX (cameraX + sin (currentYaw + 90) * distToTransform);
+    set cameraZ (cameraZ + cos (currentYaw + 90) * distToTransform);
+  ]
+end
+
 ; Camera movement
 to moveCameraEast [distToTransform]
   ask turtle 0 [
@@ -368,7 +375,7 @@ BUTTON
 261
 320
 east
-moveCameraEast 50
+moveCameraRight 50
 NIL
 1
 T
@@ -385,7 +392,7 @@ BUTTON
 118
 320
 west
-moveCameraEast -50
+moveCameraRight -50
 NIL
 1
 T

@@ -1,2 +1,2 @@
 # NetLogoRasterizer
-Rasterization in netlogo
+Demonstration of rasterization in NetLogo
